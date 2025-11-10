@@ -5,10 +5,10 @@ engine = create_engine("postgresql+psycopg2://kekoa:goatez@localhost:5433/dodger
 raw_boxscores_init = """
     CREATE TABLE IF NOT EXISTS raw.pitching_boxscores (
         row_num                         int,
-        pitcher_id_text                 text,
+        pitcher_id                      bigint NOT NULL,
         pitcher_name                    text,
-        game_pk_text                    text,
-        team_id_text                    text,
+        team_id                         bigint NOT NULL,
+        game_pk                         bigint NOT NULL,
         team_name                       text,
         is_starter_text                 text,
         fly_outs_text                   text,
@@ -62,14 +62,25 @@ raw_boxscores_init = """
         line_outs_text                  text,
         source                          text,
         load_id                         uuid DEFAULT gen_random_uuid(),
-        ingested_at                     timestamptz DEFAULT now()
+        ingested_at                     timestamptz DEFAULT now(),
+        PRIMARY KEY (pitcher_id, team_id, game_pk)
     );
 """
 
+landing_boxscores_init = """
+    CREATE TABLE IF NOT EXISTS raw.landing_boxscores (
+        load_id             uuid DEFAULT gen_random_uuid(),
+        ingested_at         timestamptz DEFAULT now(),
+        source              text NOT NULL,
+        game_pk             bigint,
+        payload             jsonb NOT NULL
+    );
+"""
 
 def main():
     with engine.begin() as conn:
         conn.execute(text(raw_boxscores_init))
+        conn.execute(text(landing_boxscores_init))
 
 if __name__ == "__main__":
     main()

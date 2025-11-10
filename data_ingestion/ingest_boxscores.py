@@ -1,6 +1,8 @@
 import requests
+import json
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Text, Table, Column, BigInteger, MetaData
+from sqlalchemy.dialects.postgresql import JSONB, insert as pg_insert
 
 from utils.utils import build_db_url
 
@@ -10,7 +12,8 @@ def _fetch_game_pks() -> []:
     game_pks = []
 
     schedule_url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&teamId=119&startDate=2025-03-18&endDate=2025-11-02"
-    response = requests.get(schedule_url)
+    response = requests.get(schedule_url, timeout=15)
+    response.raise_for_status()
     data = response.json() 
 
     schedule = data.get("dates") or {}
@@ -23,6 +26,27 @@ def _fetch_game_pks() -> []:
 
     return game_pks
 
+
+metadata = MetaData()
+landing = Table(
+    "landing_boxscores", metadata,
+    Column("source", Text, nullable=False),
+    Column("game_pk", BigInteger, primary_key=True),
+    Column("payload", JSONB, nullable=False),
+    schema="raw",
+)
+
+def insert_raw_payload(game_pk, data_payload):
+    with engine.begin() as conn:
+        stmt = pg_insert(landing).values(
+            source="MLB_stats_api",
+            game_pk=game_pk,
+            payload=data_payload,
+        ).on_conflict_do_nothing(
+            index_elements=["game_pk"]
+        )
+        conn.execute(stmt)
+
 def fetch_boxscores(game_pks: [], desired_team_id: int) -> []:
     boxscore_base_url = "https://statsapi.mlb.com/api/v1/game/{}/boxscore"
     boxscore_rows = []
@@ -30,8 +54,11 @@ def fetch_boxscores(game_pks: [], desired_team_id: int) -> []:
 
     for game_pk in game_pks:
         url = boxscore_base_url.format(game_pk)
-        response = requests.get(url)
+        response = requests.get(url, timeout=15)
+        response.raise_for_status()
         data = response.json()
+
+        insert_raw_payload(game_pk, data)
 
         teams = data.get("teams") or {}
         for side in ['away', 'home']:
@@ -55,56 +82,56 @@ def fetch_boxscores(game_pks: [], desired_team_id: int) -> []:
                             "game_pk": game_pk,
                             "team_id": team_id,
                             "team_name": team_data.get("name"),
-                            "is_starter": pitching_stats.get("gamesStarted"),
-                            "fly_outs": pitching_stats.get("flyOuts"),
-                            "ground_outs": pitching_stats.get("groundOuts"),
-                            "air_outs": pitching_stats.get("airOuts"),
-                            "runs": pitching_stats.get("runs"),
-                            "doubles": pitching_stats.get("doubles"),
-                            "triples": pitching_stats.get("triples"),
-                            "home_runs": pitching_stats.get("homeRuns"),
-                            "strike_outs": pitching_stats.get("strikeOuts"),
-                            "walks": pitching_stats.get("baseOnBalls"),
-                            "intentional_walks": pitching_stats.get("intentionalWalks"),
-                            "hits": pitching_stats.get("hits"),
-                            "hit_by_pitch": pitching_stats.get("hitByPitch"),
-                            "at_bats": pitching_stats.get("atBats"),
-                            "caught_stealing": pitching_stats.get("caughtStealing"),
-                            "stolen_bases": pitching_stats.get("stolenBases"),
-                            "stolen_base_percentage": pitching_stats.get("stolenBasePercentage"),
-                            "number_of_pitches": pitching_stats.get("numberOfPitches"),
-                            "innings_pitched": pitching_stats.get("inningsPitched"),
-                            "wins": pitching_stats.get("wins"),
-                            "losses": pitching_stats.get("losses"),
-                            "saves": pitching_stats.get("saves"),
-                            "save_opportunities": pitching_stats.get("saveOpportunities"),
-                            "holds": pitching_stats.get("holds"),
-                            "blown_saves": pitching_stats.get("blownSaves"),
-                            "earned_runs": pitching_stats.get("earnedRuns"),
-                            "batters_faced": pitching_stats.get("battersFaced"),
-                            "outs": pitching_stats.get("outs"),
-                            "complete_game": pitching_stats.get("completeGames"),
-                            "shutout": pitching_stats.get("shutouts"),
-                            "pitches_thrown": pitching_stats.get("pitchesThrown"),
-                            "balls": pitching_stats.get("balls"),
-                            "strikes": pitching_stats.get("strikes"),
-                            "strike_percentage": pitching_stats.get("strikePercentage"),
-                            "hit_batsmen": pitching_stats.get("hitBatsmen"),
-                            "balks": pitching_stats.get("balks"),
-                            "wild_pitches": pitching_stats.get("wildPitches"),
-                            "pickoffs": pitching_stats.get("pickoffs"),
-                            "rbi": pitching_stats.get("rbi"),
-                            "games_finished": pitching_stats.get("gamesFinished"),
-                            "runs_scored_per_9": pitching_stats.get("runsScoredPer9"),
-                            "home_runs_per_9": pitching_stats.get("homeRunsPer9"),
-                            "inherited_runners": pitching_stats.get("inheritedRunners"),
-                            "inherited_runners_scored": pitching_stats.get("inheritedRunnersScored"),
-                            "catchers_interference": pitching_stats.get("catchersInterference"),
-                            "sac_bunts": pitching_stats.get("sacBunts"),
-                            "sac_flies": pitching_stats.get("sacFlies"),
-                            "passed_ball": pitching_stats.get("passedBall"),
-                            "pop_outs": pitching_stats.get("popOuts"),
-                            "lineouts": pitching_stats.get("lineOuts"),
+                            "is_starter_text": pitching_stats.get("gamesStarted"),
+                            "fly_outs_text": pitching_stats.get("flyOuts"),
+                            "ground_outs_text": pitching_stats.get("groundOuts"),
+                            "air_outs_text": pitching_stats.get("airOuts"),
+                            "runs_text": pitching_stats.get("runs"),
+                            "doubles_text": pitching_stats.get("doubles"),
+                            "triples_text": pitching_stats.get("triples"),
+                            "home_runs_text": pitching_stats.get("homeRuns"),
+                            "strike_outs_text": pitching_stats.get("strikeOuts"),
+                            "walks_text": pitching_stats.get("baseOnBalls"),
+                            "intentional_walks_text": pitching_stats.get("intentionalWalks"),
+                            "hits_text": pitching_stats.get("hits"),
+                            "hit_by_pitch_text": pitching_stats.get("hitByPitch"),
+                            "at_bats_text": pitching_stats.get("atBats"),
+                            "caught_stealing_text": pitching_stats.get("caughtStealing"),
+                            "stolen_bases_text": pitching_stats.get("stolenBases"),
+                            "stolen_base_percentage_text": pitching_stats.get("stolenBasePercentage"),
+                            "number_of_pitches_text": pitching_stats.get("numberOfPitches"),
+                            "innings_pitched_text": pitching_stats.get("inningsPitched"),
+                            "wins_text": pitching_stats.get("wins"),
+                            "losses_text": pitching_stats.get("losses"),
+                            "saves_text": pitching_stats.get("saves"),
+                            "save_opportunities_text": pitching_stats.get("saveOpportunities"),
+                            "holds_text": pitching_stats.get("holds"),
+                            "blown_saves_text": pitching_stats.get("blownSaves"),
+                            "earned_runs_text": pitching_stats.get("earnedRuns"),
+                            "batters_faced_text": pitching_stats.get("battersFaced"),
+                            "outs_text": pitching_stats.get("outs"),
+                            "complete_game_text": pitching_stats.get("completeGames"),
+                            "shutout_text": pitching_stats.get("shutouts"),
+                            "pitches_thrown_text": pitching_stats.get("pitchesThrown"),
+                            "balls_text": pitching_stats.get("balls"),
+                            "strikes_text": pitching_stats.get("strikes"),
+                            "strike_percentage_text": pitching_stats.get("strikePercentage"),
+                            "hit_batsmen_text": pitching_stats.get("hitBatsmen"),
+                            "balks_text": pitching_stats.get("balks"),
+                            "wild_pitches_text": pitching_stats.get("wildPitches"),
+                            "pickoffs_text": pitching_stats.get("pickoffs"),
+                            "rbi_text": pitching_stats.get("rbi"),
+                            "games_finished_text": pitching_stats.get("gamesFinished"),
+                            "runs_scored_per_9_text": pitching_stats.get("runsScoredPer9"),
+                            "home_runs_per_9_text": pitching_stats.get("homeRunsPer9"),
+                            "inherited_runners_text": pitching_stats.get("inheritedRunners"),
+                            "inherited_runners_scored_text": pitching_stats.get("inheritedRunnersScored"),
+                            "catchers_interference_text": pitching_stats.get("catchersInterference"),
+                            "sac_bunts_text": pitching_stats.get("sacBunts"),
+                            "sac_flies_text": pitching_stats.get("sacFlies"),
+                            "passed_ball_text": pitching_stats.get("passedBall"),
+                            "pop_outs_text": pitching_stats.get("popOuts"),
+                            "line_outs_text": pitching_stats.get("lineOuts"),
                             "source": "MLB_stats_api"
                         })
 
@@ -117,8 +144,10 @@ def load_to_psql(df: pd.DataFrame):
             'pitching_boxscores',
             conn,
             schema = 'raw',
-            if_exists = 'replace',
-            index = False
+            if_exists = 'append',
+            index = False,
+            method="multi",
+            chunksize=5000
         )
 
 def main():
