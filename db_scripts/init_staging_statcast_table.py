@@ -1,0 +1,90 @@
+from sqlalchemy import create_engine, text
+from utils.utils import build_db_url
+
+query = """
+    CREATE TABLE IF NOT EXISTS staging.statcast_pitching (
+        pitch_type                          VARCHAR(5)      NOT NULL,
+        game_pk                             BIGINT          NOT NULL,
+        game_date                           DATE            NOT NULL,
+        pitcher_id                          BIGINT          NOT NULL,
+        batter_id                           BIGINT          NOT NULL,
+        player_name                         VARCHAR(30),
+        release_speed                       NUMERIC(3, 1),
+        release_pos_x                       NUMERIC(1, 2),
+        release_pos_z                       NUMERIC(1, 2),
+        events                              VARCHAR(30),
+        description                         VARCHAR(28),
+        zone                                SMALLINT,
+        des                                 TEXT,
+        game_type                           CHAR(1),
+        stand                               CHAR(1),
+        p_throws                            CHAR(1),
+        home_team                           CHAR(3),
+        away_team                           CHAR(3),
+        type                                CHAR(1),
+        hit_location                        SMALLINT,
+        bb_type                             VARCHAR(15),
+        balls                               SMALLINT,
+        strikes                             SMALLINT,
+        pfx_x                               NUMERIC(1, 2),
+        pfx_z                               NUMERIC(1, 2),
+        plate_x                             NUMERIC(1, 2),
+        plate_z                             NUMERIC(1, 2),
+        on_3b                               BOOL,
+        on_2b                               BOOL,
+        on_1b                               BOOL,
+        outs_when_up                        SMALLINT,
+        inning                              SMALLINT,
+        inning_topbot                       CHAR(3),
+        hc_x                                NUMERIC(3, 2),
+        hc_y                                NUMERIC(3, 2),
+        vx0                                 NUMERIC(2, 3),
+        vy0                                 NUMERIC(2, 3),
+        vz0                                 NUMERIC(2, 3),
+        ax                                  NUMERIC(2, 3),
+        az                                  NUMERIC(2, 3),
+        sz_top                              NUMERIC(1, 2),
+        sz_bot                              NUMERIC(1, 2),
+        hit_distance_sc                     NUMERIC(3, 2),
+        launch_speed                        NUMERIC(3, 1),
+        launch_angle                        SMALLINT,
+        effective_speed                     NUMERIC(3, 1),
+        release_spin_rate                   SMALLINT,
+        release_extension                   NUMERIC(1, 1),
+        release_pos_y                       NUMERIC(2, 2),
+        estimated_ba_using_speedangle       NUMERIC(1, 3),
+        estimated_woba_using_speedangle     NUMERIC(1, 3),
+        woba_value                          NUMERIC(1, 3),
+        woba_denom                          SMALLINT,
+        at_bat_number                       SMALLINT,
+        pitch_number                        SMALLINT,
+        pitch_name                          VARCHAR(18),
+        home_score                          SMALLINT,
+        away_score                          SMALLINT,
+        spin_axis                           SMALLINT,
+        bat_speed                           NUMERIC(2, 1),
+        swing_length                        NUMERIC(2, 2),
+        n_thru_order_pitcher                SMALLINT,
+        n_priorpa_thisgame_player_at_bat    SMALLINT,
+        pitcher_days_since_prev_game        SMALLINT,
+        batter_days_since_prev_game         SMALLINT,
+        pitcher_days_until_next_game        SMALLINT,
+        batter_days_until_next_game         SMALLINT,
+        api_break_z_with_gravity            NUMERIC(2, 2),
+        api_break_x_arm                     NUMERIC(1, 2),
+        api_break_x_batter_in               NUMERIC(1, 2),
+        arm_angle                           NUMERIC(2, 1),
+        attack_angle                        NUMERIC(2, 2),
+        attack_direction                    NUMERIC(3, 2),
+        swing_path_tilt                     NUMERIC(2, 2)
+    )
+"""
+
+def main():
+    engine = create_engine(build_db_url())
+
+    with engine.begin() as conn:
+        conn.execute(text(query))
+
+if __name__ == "__main__":
+    main()
