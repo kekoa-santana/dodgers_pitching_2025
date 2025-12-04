@@ -70,6 +70,7 @@ def run_numeric_checks():
 
         with engine.connect() as conn:
             result = conn.execute(text(q)).fetchall()
+            null_row_count = conn.execute(text(q_special)).fetchall()
 
             if len(result) == 0:
                 print("OK")
