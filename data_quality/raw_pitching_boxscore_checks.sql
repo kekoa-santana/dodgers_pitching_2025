@@ -40,3 +40,10 @@ FROM raw.pitching_boxscores
 WHERE runs_text IS NOT NULL
     AND TRIM(runs_text) <> ''
     AND runs_text !~ '^[0-9]+$';
+
+-- fly_outs valid
+SELECT *
+FROM raw.pitching_boxscores
+WHERE fly_outs_text IS NOT NULL
+    AND TRIM(fly_outs_text) <> ''
+    AND fly_outs_text !~ '^[0-9]+$';
