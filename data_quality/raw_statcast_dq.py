@@ -8,13 +8,13 @@ def run_statcast_dq(parquet_path: str):
     df = pd.read_parquet(parquet_path)
     print("\nRunning Data Quality Checks on RAW Statcast Parquet\n")
 
-    # DQ1: Duplicate pitch keys
+    # DQ1: Duplicate primary keys
     dupes = df.duplicated(subset=["game_pk", "at_bat_number", "pitch_number"], keep = False)
     if dupes.any():
-        print("DQ1 FAIL: Duplicate pitch keys detected:")
+        print("DQ1 FAIL: Duplicate primary keys detected:")
         print(df.loc[dupes, ["game_pk", "at_bat_number", "pitch_number"]])
     else:
-        print("DQ1 PASS: No duplicate pitch keys")
+        print("DQ1 PASS: No duplicate primary keys")
 
     # DQ2: Missing critical identifiers
     null_keys = df[
