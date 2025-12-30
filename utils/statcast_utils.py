@@ -49,37 +49,11 @@ def is_called_strike(description: str) -> bool:
 def is_ball(description: str) -> bool:
     return isinstance(description, str) and description.lower() in ('ball', 'blocked_ball', 'automatic_ball')
 
-# ---------------------
-#   CLEANING HELPERS
-# ---------------------
-
-# plate_x/z cleaning
-def clean_plate_location(df: pd.DataFrame) -> pd.DataFrame:
-    if "plate_x" in df.columns:
-        df.loc[(df["plate_x"] < -3) | (df["plate_x"] > 3), "plate_x"] = np.nan
-    
-    if "plate_z" in df.columns:
-        df.loc[(df["plate_z"] < 0) | (df["plate_z"] > 7), "plate_z"] = np.nan
-
-    return df
-
-# EV/LA cleaning
-def clean_ev_la(df: pd.DataFrame) -> pd.DataFrame:
-    if "launch_speed" in df.columns:
-        df.loc[(df["launch_speed"] < 0) | (df["launch_speed"] > 130), "launch_speed"] = np.nan
-    if "launch_angle" in df.columns:
-        df.loc[(df["launch_angle"] < -90) | (df["launch_angle"] > 90), "launch_angle"] = np.nan
-    return df
-
-# Remove NAN Pitch Type rows
-def remove_nan_pitch(df: pd.DataFrame) -> pd.DataFrame:
-    nan_mask = ~df['pitch_type'].isna()
-    df = df[nan_mask].copy()
-    return df
-
-# Clean Spin Axis & Spin Rate
-
-
+def is_swing(description: str) -> bool:
+    return isinstance(description, str) and description.lower() in (
+        'swinging_strike', 'hit_into_play', 'swinging_strike_blocked', 'foul_tip',
+        'foul', 'foul_bunt', 'bunt_foul_tip', 'missed_bunt'
+        )
 
 # ---------------------
 #    PK ASSURANCE
