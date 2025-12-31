@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 # ---------------------
 #   CLEANING HELPERS
@@ -66,6 +67,7 @@ def clean_effective_speed(df: pd.DataFrame) -> pd.DataFrame:
         speed_delta = df["effective_speed"] - df["release_speed"]
 
         df.loc[(df["effective_speed"] < 60) | (df["effective_speed"] > 111), "effective_speed"] = np.nan
+        # KEEP THIS
         df.loc[speed_delta.abs() > 6, "effective_speed"] = np.nan
 
     return df
