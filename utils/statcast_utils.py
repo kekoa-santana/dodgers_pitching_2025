@@ -55,6 +55,9 @@ def is_swing(description: str) -> bool:
         'foul', 'foul_bunt', 'bunt_foul_tip', 'missed_bunt'
         )
 
+def is_homerun(events: str) -> bool:
+    return isinstance(events, str) and events.lower() == 'home_run'
+
 # ---------------------
 #    PK ASSURANCE
 # ---------------------
@@ -88,58 +91,4 @@ def parse_game_date(df: pd.DataFrame, col: str = "game_date") -> pd.DataFrame:
         return df
     
     df[col] = pd.to_datetime(df[col], errors="coerce")
-    return df
-
-# ---------------------
-#   TYPE NORMALIZATION
-# ---------------------
-# ONLY ACCOUNTS FOR COLUMNS THAT ARE IN THE INITIAL 3 TABLES
-def normalize_types(df: pd.DataFrame) -> pd.DataFrame:
-    # Nullable ints (IDs)
-    int_like_cols = [
-        'game_pk', 'pitcher_id', 'batter_id', 'pitcher', 'batter', 'on_3b', 'on_2b', 'on_1b'
-        ]
-    for col in int_like_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
-
-    # Small ints (counts/context)
-    small_int_cols = [
-        'pitch_number', 'at_bat_number', 'zone', 'balls', 'strikes', 'inning',
-        'outs_when_up', 'home_score', 'away_score', 'bat_score', 'fld_score', 
-        'home_score_diff', 'bat_score_diff', 'hit_location'
-    ]
-    for col in small_int_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors= "coerce").astype("Int64")
-
-    # Nullable booleans
-    bool_cols = [
-        'is_whiff', 'is_bip', 'is_called_strike', 'is_ball', 'is_strikeout', 'is_walk'
-    ]
-    for col in bool_cols:
-        if col in df.columns:
-            df[col] = df[col].astype("boolean")
-
-    # String cols
-    string_cols = [
-        'pitch_type', 'pitch_name', 'events', 'description', 'pitch_result_type',
-        'p_throws', 'stand', 'if_fielding_alignment', 'of_fielding_alignment',
-        'bb_type'
-    ]
-    for col in string_cols:
-        if col in df.columns:
-            df[col] = df[col].astype('string')
-
-    # float cols
-    float_cols = [
-        'release_speed', 'release_pos_x', 'release_pos_y', 'release_pos_z', 'release_spin_rate', 'release_extension',
-        'spin_axis', 'effective_speed', 'pfx_x', 'pfx_y', 'vx0', 'vy0', 'vz0', 'ax', 'ay', 'az', 'plate_x', 'plate_z', 
-        'sz_top', 'sz_bot', 'api_break_z_with_gravity', 'api_break_x_arm', 'api_break_x_batter_in', 'arm_angle',
-        'attack_angle', 'attack_direction', 'swing_path_tilt', 'launch_angle'
-    ]
-    for col in float_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
-
     return df

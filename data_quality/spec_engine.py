@@ -1,15 +1,32 @@
 from __future__ import annotations
-from typing import Callable
+from typing import Callable, Optional, Any
 
 import numpy as np
 import pandas as pd
+from dataclasses import dataclass, field
 
-from data_quality.statcast_specs import DTYPES, BOUNDS
 from utils.statcast_utils import (
     assert_pk_unique,
     map_pitch_result,
     is_whiff, is_called_strike, is_bip, is_swing, is_ball
 )
+
+@dataclass
+class ColumnSpec:
+    name: str
+    dtype: str | None
+    nullable: bool = True
+    bounds: Optional[tuple[float, float]] = None
+    derive: Optional[Callable[[pd.DataFrame], pd.Series]] = None
+
+@dataclass
+class TableSpec:
+    name: str
+    pk: list[str]
+    columns: dict[str, ColumnSpec]
+    table_rules: list[Callable[[pd.DataFrame], dict[str, int]]] | None = None
+    row_filters: list[Callable[[pd.DataFrame], pd.DataFrame]] | None = None
+
 
 def _coerce_series(s: pd.Series, dtype: str) -> pd.Series:
     if dtype == "int64":
@@ -26,102 +43,91 @@ def _coerce_series(s: pd.Series, dtype: str) -> pd.Series:
     # fallback
     return s.astype(dtype)
 
-def _apply_bounds(df: pd.DataFrame) -> dict[str, int]:
-    invalid_counts = {}
-    for col, (lo, hi) in BOUNDS.items():
-        if col not in df.columns:
-            continue
-        # only makes sense for numeric
-        s = pd.to_numeric(df[col], errors="coerce")
-        mask = (s < lo) | (s > hi)
-        n = int(mask.sum())
-        if n:
-            df.loc[mask, col] = np.nan
-        invalid_counts[col] = n
-    return invalid_counts
+def _apply_bounds_one(df: pd.DataFrame, col: str, bounds: tuple[float, float]) -> int:
+    lo, hi = bounds
+    s = pd.to_numeric(df[col], errors='coerce')
+    mask = (s < lo) | (s > hi)
+    n = int(mask.sum())
+    if n:
+        df.loc[mask, col] = np.nan
+    return n
 
-def _derive_columns(df: pd.DataFrame) -> None:
-    if "description" in df.columns:
-        desc = df["description"]
-        df["is_whiff"] = desc.map(is_whiff).astype("boolean")
-        df['is_bip'] = desc.map(is_bip).astype("boolean")
-        df['is_swing'] = desc.map(is_swing).astype('boolean')
-        df['is_ball'] = desc.map(is_ball).astype('boolean')
-        df['is_called_strike'] = desc.map(is_called_strike).astype('boolean')
-
-def _apply_special_rules(df: pd.DataFrame) -> dict[str, int]:
-    invalid = {}
-
-    # ----------------------------------
-    #       STRIKE ZONE GEOMETRY
-    # ----------------------------------
-    if "sz_bot" in df.columns and "sz_top" in df.columns:
-        sz_bot = pd.to_numeric(df['sz_bot'], errors="coerce")
-        sz_top = pd.to_numeric(df['sz_top'], errors='coerce')
-
-        # impossible inversion
-        mask_inv = sz_bot.notna() & sz_top.notna() & (sz_bot > sz_top)
-        n_inv = int(mask_inv.sum())
-        if n_inv:
-            df.loc[mask_inv, ['sz_bot', 'sz_top']] = np.nan
-        invalid['sz_inverted'] = n_inv
-
-        # implausible absolute values (broad, low false positives)
-        mask_abs = (
-            (sz_top.notna() & ((sz_top < 2.0) | (sz_top > 5.5))) |
-            (sz_bot.notna() & ((sz_bot < 0.5) | (sz_bot > 3.5)))
-        )
-        n_abs = int(mask_abs.sum())
-        if n_abs:
-            df.loc[mask_abs, ['sz_top', 'sz_bot']] = np.nan
-        invalid['sz_abs_outliers'] = n_abs
-
-        # implausible zone height
-        height = sz_top - sz_bot
-        mask_h = height.notna() & ((height < 0.5) | (height > 5))
-        n_h = int(mask_h.sum())
-        if n_h:
-            df.loc[mask_h, ['sz_top', 'sz_bot']] = np.nan
-        invalid['sz_height_outliers'] = n_h
-
-    # ----------------------------------
-    #       EFFECTIVE SPEED RULE
-    # ----------------------------------
-    if ('effective_speed' in df.columns) & ('release_speed' in df.columns):
-        eff = pd.to_numeric(df['effective_speed'], errors='coerce')
-        rel = pd.to_numeric(df['release_speed'], errors = 'coerce')
-        delta_speed = eff - rel
-        mask_del = eff.notna() & rel.notna() & delta_speed.abs() > 6
-        n_del = int(mask_del.sum())
-        if n_del:
-            df.loc[mask_del, 'effective_speed'] = np.nan
-        invalid['effective_speed_invalid'] = n_del
-    
-    return invalid
-
-def clean_statcast_df(df: pd.DataFrame, pk_cols: list[str]) -> tuple[pd.DataFrame, dict]:
+def apply_table_spec(df: pd.DataFrame, spec: TableSpec) -> tuple[pd.DataFrame, dict[str, Any]]:
     df = df.copy()
 
-    # Coerce types
-    for col, dtype in DTYPES.items():
-        if col in df.columns:
-            df[col] = _coerce_series(df[col], dtype)
-        
-    # Apply bounds
-    invalid_bounds = _apply_bounds(df)
-
-    # Special rules
-    invalid_special = _apply_special_rules(df)
-
-    # Derive columns
-    _derive_columns(df)
-
-    df = assert_pk_unique(df, pk_cols)
-
-    report = {
-        'rows': len(df),
-        'invalid_bounds': invalid_bounds,
-        'invalid_special': invalid_special
+    report: dict[str, Any] = {
+        'table': spec.name,
+        'rows_in': int(len(df)),
+        'missing_required_columns': [],
+        'type_coercions': {},
+        'invalid_bounds': {},
+        'derived_columns': {},
+        'rule_violations': {},
+        'not_nullable_violations': {}
     }
 
+    # Coerce + Bound
+    for key, colspec in spec.columns.items():
+        col = colspec.name
+
+        if colspec.derive is not None:
+            continue
+
+        if col not in df.columns:
+            if not colspec.nullable:
+                report['missing_required_columns'].append(col)
+        
+        if colspec.dtype:
+            df[col] = _coerce_series(df[col], colspec.dtype)
+            report['type_coercions'][col] = colspec.dtype
+
+        if colspec.bounds:
+            n = _apply_bounds_one(df, col, colspec.bounds)
+            report['invalid_bounds'][col] = n
+
+    # Derive columns
+    for key, colspec in spec.columns.items():
+        if colspec.derive is None:
+            continue
+
+        out_col = colspec.name
+        try:
+            df[out_col] = colspec.derive(df)
+        except KeyError:
+            print("derived error")
+            continue
+            
+        report['derived_columns'] = out_col
+
+        if colspec.dtype:
+            df[out_col] = _coerce_series(df[out_col], colspec.dtype)
+
+        if colspec.bounds is not None:
+            n = _apply_bounds_one(df, out_col, colspec.bounds)
+            report['invalid_bounds'][out_col] = n
+    
+    # Table rules
+    if spec.table_rules:
+        for rule_fn in spec.table_rules:
+            violations = rule_fn(df)
+            for k, v in violations.items():
+                report['rule_violations'][k] = report['rule_violations'].get(k, 0) + int(v)
+
+    if spec.row_filters:
+        for fn in spec.row_filters:
+            df = fn(df)
+
+    # Not null checks
+    for key, colspec in spec.columns.items():
+        col = colspec.name
+        if not colspec.nullable and col in df.columns:
+            n_null = int(df[col].isna().sum())
+            if n_null:
+                report['not_nullable_violations'][col] = n_null
+
+
+    # PK uniqueness enforcement (drops dupes)
+    df = assert_pk_unique(df, spec.pk)
+
+    report['rows_out'] = int(len(df))
     return df, report
