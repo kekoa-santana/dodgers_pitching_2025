@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert
 from typing import Optional, Tuple, Any
 
-from data_quality.spec_engine import apply_table_spec, TableSpec, _coerce_series
+from data_quality.specs.spec_engine import apply_table_spec, TableSpec, _coerce_series
 
 def get_table_columns(engine, schema: str, table: str) -> list[str]:
     sql = text("""

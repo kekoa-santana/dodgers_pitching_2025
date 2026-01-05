@@ -5,11 +5,7 @@ import numpy as np
 import pandas as pd
 from dataclasses import dataclass, field
 
-from utils.statcast_utils import (
-    assert_pk_unique,
-    map_pitch_result,
-    is_whiff, is_called_strike, is_bip, is_swing, is_ball
-)
+from utils.statcast_utils import assert_pk_unique
 
 @dataclass
 class ColumnSpec:
@@ -18,6 +14,7 @@ class ColumnSpec:
     nullable: bool = True
     bounds: Optional[tuple[float, float]] = None
     derive: Optional[Callable[[pd.DataFrame], pd.Series]] = None
+    original_name: str | None = None
 
 @dataclass
 class TableSpec:
@@ -70,6 +67,9 @@ def apply_table_spec(df: pd.DataFrame, spec: TableSpec) -> tuple[pd.DataFrame, d
     for key, colspec in spec.columns.items():
         col = colspec.name
 
+        if colspec.original_name:
+            df = df.rename(columns={colspec.original_name: col})
+
         if colspec.derive is not None:
             continue
 
@@ -85,8 +85,7 @@ def apply_table_spec(df: pd.DataFrame, spec: TableSpec) -> tuple[pd.DataFrame, d
             n = _apply_bounds_one(df, col, colspec.bounds)
             report['invalid_bounds'][col] = n
 
-    # Derive columns
-    for key, colspec in spec.columns.items():
+        # Derive columns
         if colspec.derive is None:
             continue
 
