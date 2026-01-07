@@ -8,7 +8,7 @@ from data_transformation.staging.transform_load_table import transform_and_load
 from data_quality.specs.staging.statcast_pitches import STATCAST_PITCHES_SPEC
 from data_quality.specs.staging.statcast_batted_balls import STATCAST_BATTED_BALLS_SPEC
 from data_quality.specs.staging.statcast_at_bats import STATCAST_AT_BATS_SPEC
-# from data_quality.specs.staging.statcast_swings import STATCAST_SWINGS_SPEC
+from data_quality.specs.staging.builders.build_at_bats import build_statcast_at_bats
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 PARQUET_PATH = os.path.join(BASE_DIR, 'data', 'statcast_pitching_lad_2025-03-18_2025-11-01_f008ac3a-0f27-4843-b345-95059ed956bf.parquet')
@@ -19,29 +19,25 @@ REGISTRY = {
         'schema': 'staging',
         'table': 'statcast_pitches',
         'constraint': 'statcast_pitches_pkey',
-        'source': 'parquet'
+        'source': 'parquet',
+        'builder': None
     },
     'statcast_batted_balls': {
         'spec': STATCAST_BATTED_BALLS_SPEC,
         'schema': 'staging',
         'table': 'statcast_batted_balls',
         'constraint': 'statcast_batted_balls_pkey',
-        'source': 'parquet'
+        'source': 'parquet',
+        'builder': None
     },
     'statcast_at_bats': {
         'spec': STATCAST_AT_BATS_SPEC,
         'schema': 'staging',
         'table': 'statcast_at_bats',
         'constraint': 'statcast_at_bats_pkey',
-        'source': 'parquet'
-    },
-    # 'statcast_swings': {
-    #     'spec': STATCAST_SWINGS_SPEC,
-    #     'schema': 'staging',
-    #     'table': 'statcast_swings',
-    #     'constraint': 'statcast_swings_pkey',
-    #     'source': 'parquet'
-    # }
+        'source': 'parquet',
+        'builder': build_statcast_at_bats
+    }
 }
 
 def load_table(table_key: str, parquet_path: str = PARQUET_PATH):
@@ -53,6 +49,10 @@ def load_table(table_key: str, parquet_path: str = PARQUET_PATH):
     engine = create_engine(build_db_url())
 
     df_raw = pd.read_parquet(PARQUET_PATH)
+
+    builder = cfg.get("builder")
+    if builder is not None:
+        df_raw = builder(df_raw)
 
     n, report = transform_and_load(
         engine,

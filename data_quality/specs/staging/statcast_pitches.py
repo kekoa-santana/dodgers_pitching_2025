@@ -2,7 +2,7 @@ from data_quality.specs.spec_engine import ColumnSpec, TableSpec
 from data_quality.specs.shared.helpers import merge_columns
 from data_quality.specs.shared.statcast_common import COMMON_PITCH_STAGING_COLUMNS
 
-from utils.statcast_utils import (is_bip, is_whiff, is_swing, is_called_strike, is_ball, map_pitch_result)
+from utils.statcast_utils import (is_bip, is_whiff, is_swing, is_called_strike, is_ball, map_pitch_result, is_foul)
 
 import pandas as pd
 import numpy as np
@@ -232,6 +232,11 @@ STATCAST_PITCH_ONLY: dict[str, ColumnSpec] = {
         name='is_swing',
         dtype='boolean',
         derive = lambda df: df['description'].map(is_swing)
+    ),
+    'is_foul': ColumnSpec(
+        name='is_foul',
+        dtype='boolean',
+        derive=lambda df: df['description'].map(is_foul)
     )
 }
 

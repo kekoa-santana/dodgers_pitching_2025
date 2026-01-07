@@ -26,7 +26,7 @@ class TableSpec:
 
 
 def _coerce_series(s: pd.Series, dtype: str) -> pd.Series:
-    if dtype == "int64":
+    if dtype in ("Int64", "int64", "int"):
         return pd.to_numeric(s, errors="coerce").astype("Int64")
     if dtype == "float64":
         return pd.to_numeric(s, errors="coerce").astype("float64")
@@ -63,19 +63,41 @@ def apply_table_spec(df: pd.DataFrame, spec: TableSpec) -> tuple[pd.DataFrame, d
         'not_nullable_violations': {}
     }
 
+    rename_map = {}
+    for _, colspec in spec.columns.items():
+        if colspec.original_name and colspec.original_name in df.columns:
+            if colspec.name not in df.columns:
+                rename_map[colspec.original_name] = colspec.name
+
+    if rename_map:
+        df = df.rename(columns=rename_map)
+ 
     # Coerce + Bound
-    for key, colspec in spec.columns.items():
+    for _, colspec in spec.columns.items():
         col = colspec.name
 
-        if colspec.original_name:
-            df = df.rename(columns={colspec.original_name: col})
-
         if colspec.derive is not None:
+            try:
+                df[col] = colspec.derive(df)
+                report["derived_columns"][col] = True
+            except KeyError as e:
+                report['derived_columns'][col] = f"failed_missing_dep:{str(e)}"
+                continue
+
+            if colspec.dtype:
+                df[col] = _coerce_series(df[col], colspec.dtype)
+                report['type_coercions'][col] = colspec.dtype
+
+            if colspec.bounds:
+                n = _apply_bounds_one(df, col, colspec.bounds)
+                report['invalid_bounds'][col] = n
+
             continue
 
         if col not in df.columns:
             if not colspec.nullable:
                 report['missing_required_columns'].append(col)
+            continue
         
         if colspec.dtype:
             df[col] = _coerce_series(df[col], colspec.dtype)
@@ -85,25 +107,6 @@ def apply_table_spec(df: pd.DataFrame, spec: TableSpec) -> tuple[pd.DataFrame, d
             n = _apply_bounds_one(df, col, colspec.bounds)
             report['invalid_bounds'][col] = n
 
-        # Derive columns
-        if colspec.derive is None:
-            continue
-
-        out_col = colspec.name
-        try:
-            df[out_col] = colspec.derive(df)
-        except KeyError:
-            print("derived error")
-            continue
-            
-        report['derived_columns'] = out_col
-
-        if colspec.dtype:
-            df[out_col] = _coerce_series(df[out_col], colspec.dtype)
-
-        if colspec.bounds is not None:
-            n = _apply_bounds_one(df, out_col, colspec.bounds)
-            report['invalid_bounds'][out_col] = n
     
     # Table rules
     if spec.table_rules:
@@ -126,6 +129,12 @@ def apply_table_spec(df: pd.DataFrame, spec: TableSpec) -> tuple[pd.DataFrame, d
 
 
     # PK uniqueness enforcement (drops dupes)
+    missing_pk = [k for k in spec.pk if k not in df.columns]
+    if missing_pk:
+        raise ValueError(f"Missing PK columns for {spec.name}: {missing_pk}. "
+                         f"Available columns: {list(df.columns)}")
+
+
     df = assert_pk_unique(df, spec.pk)
 
     report['rows_out'] = int(len(df))

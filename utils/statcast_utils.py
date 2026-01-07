@@ -55,8 +55,21 @@ def is_swing(description: str) -> bool:
         'foul', 'foul_bunt', 'bunt_foul_tip', 'missed_bunt'
         )
 
+def is_walk(events: str) -> bool:
+    return isinstance(events, str) and events.lower() in (
+        'intent_walk', 'walk'
+    )
+
+def is_strikeout(events: str) -> bool:
+    return isinstance(events, str) and events.lower() in (
+        'strikeout_double_play', 'strikeout'
+    )
+
 def is_homerun(events: str) -> bool:
     return isinstance(events, str) and events.lower() == 'home_run'
+
+def is_foul(description: str) -> bool:
+    return isinstance(description, str) and description.lower() == 'foul'
 
 # ---------------------
 #    PK ASSURANCE
@@ -82,13 +95,4 @@ def assert_pk_unique(
         
         df = df.drop_duplicates(subset=pk_cols, keep="last").copy()
 
-    return df
-# ---------------------
-#   DATETIME PARSING
-# ---------------------
-def parse_game_date(df: pd.DataFrame, col: str = "game_date") -> pd.DataFrame:
-    if col not in df.columns:
-        return df
-    
-    df[col] = pd.to_datetime(df[col], errors="coerce")
     return df
