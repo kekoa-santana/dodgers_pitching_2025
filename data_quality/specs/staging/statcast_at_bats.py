@@ -154,7 +154,7 @@ DERIVED_COLUMNS: dict[str, ColumnSpec] = {
         dtype='Int64',
         bounds=(0, 30)
     ),
-    'pitcher_ab_number': ColumnSpec(
+    'pitcher_pa_number': ColumnSpec(
         name='pitcher_ab_number',
         dtype='Int64',
         bounds=(1, 150)
