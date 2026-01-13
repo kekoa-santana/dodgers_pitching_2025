@@ -201,6 +201,18 @@ STATCAST_PITCH_ONLY: dict[str, ColumnSpec] = {
         dtype='float64',
         bounds=(-30, 90)
     ),
+    'home_team': ColumnSpec(
+        name='home_team',
+        dtype='string'
+    ),
+    'away_team': ColumnSpec(
+        name='away_team',
+        dtype='string'
+    ),
+    'game_type': ColumnSpec(
+        name='game_type',
+        dtype='string'
+    ),
     
     # Derived Columns
     'pitch_result_type': ColumnSpec(

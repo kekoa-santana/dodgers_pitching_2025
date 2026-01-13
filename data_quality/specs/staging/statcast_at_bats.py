@@ -46,7 +46,7 @@ AT_BAT_CALC: dict[str, ColumnSpec] = {
     'post_bat_score': ColumnSpec(
         name='post_bat_score',
         dtype='Int64',
-        bounds=(0, 4)
+        bounds=(0, 30)
     ),
     'is_whiff': ColumnSpec(
         name='is_whiff',
@@ -67,7 +67,12 @@ AT_BAT_CALC: dict[str, ColumnSpec] = {
         name='is_foul',
         dtype='boolean',
         derive=lambda df: df['description'].map(is_foul)
-    )
+    ),
+    'bat_score_diff': ColumnSpec(
+        name='bat_score_diff',
+        dtype='Int64',
+        bounds=(-30, 30)
+    ),
 }
 
 STATCAST_AT_BATS_ONLY: dict[str, ColumnSpec] = {
@@ -80,9 +85,9 @@ STATCAST_AT_BATS_ONLY: dict[str, ColumnSpec] = {
         name='inning_topbot',
         dtype='string',
     ),
-    'description': ColumnSpec(
-        name='description',
-        dtype='string'
+    'last_pitch_number': ColumnSpec(
+        name='last_pitch_number',
+        dtype='Int64'
     ),
     'events': ColumnSpec(
         name='events',
@@ -102,7 +107,33 @@ STATCAST_AT_BATS_ONLY: dict[str, ColumnSpec] = {
         name='outs_when_up',
         dtype='Int64',
         bounds=(0, 2)
-    )
+    ),
+    'times_through_order': ColumnSpec(
+        name='times_through_order',
+        dtype='Int64',
+        bounds=(1, 10),
+        original_name='n_thruorder_pitcher'
+    ),
+    'bat_score': ColumnSpec(
+        name='bat_score',
+        dtype='Int64', 
+        bounds=(0, 30)
+    ),
+    'fld_score': ColumnSpec(
+        name='fld_score',
+        dtype='Int64',
+        bounds=(0, 30)
+    ),
+    'bat_score_diff': ColumnSpec(
+        name='bat_score_diff',
+        dtype='Int64',
+        bounds=(-30, 30)
+    ),
+    'post_bat_score': ColumnSpec(
+        name='post_bat_score',
+        dtype='Int64',
+        bounds=(0, 30)
+    ),
 }
 
 DERIVED_COLUMNS: dict[str, ColumnSpec] = {
@@ -155,14 +186,9 @@ DERIVED_COLUMNS: dict[str, ColumnSpec] = {
         bounds=(0, 30)
     ),
     'pitcher_pa_number': ColumnSpec(
-        name='pitcher_ab_number',
+        name='pitcher_pa_number',
         dtype='Int64',
-        bounds=(1, 150)
-    ),
-    'times_through_order': ColumnSpec(
-        name='times_through_order',
-        dtype='Int64',
-        bounds=(1, 150)
+        bounds=(1, 100)
     )
 }
 

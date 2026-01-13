@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sqlalchemy import create_engine, text, Table, MetaData
+from sqlalchemy import create_engine, text, Table, MetaData, func
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert
 from typing import Optional, Tuple, Any
@@ -48,7 +48,7 @@ def prepare_for_postgres(df, spec: TableSpec):
 
     return df
 
-def insert_ignore_conflicts(
+def insert_update_conflicts(
     engine,
     df,
     schema: str,
@@ -76,7 +76,19 @@ def insert_ignore_conflicts(
                 continue
 
             stmt = insert(table).values(chunk)
-            stmt = stmt.on_conflict_do_nothing(constraint=constraint)
+            
+            excluded = stmt.excluded
+            update_cols = [c.name for c in table.columns if c.name not in spec.pk]
+
+            set_clause = {
+                c: func.coalesce(getattr(table.c, c), getattr(excluded, c))
+                for c in update_cols
+            }
+
+            stmt = stmt.on_conflict_do_update(
+                constraint=constraint,
+                set_=set_clause
+            )
 
             try:
                 result = conn.execute(stmt)
@@ -123,7 +135,7 @@ def transform_and_load(
     table_cols = get_table_columns(engine, schema, table)
     df_load = align_df_to_table(df_clean, table_cols)
     df_prep = prepare_for_postgres(df_load, spec)
-    n = insert_ignore_conflicts(
+    n = insert_update_conflicts(
         engine=engine,
         df=df_prep,
         schema=schema,

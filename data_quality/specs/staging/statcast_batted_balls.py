@@ -80,6 +80,10 @@ STATCAST_BATTED_BALLS_ONLY: dict[str, ColumnSpec] = {
         name='description',
         dtype='string'
     ),
+    'events': ColumnSpec(
+        name='events',
+        dtype='string'
+    ),
 
     # Derived Columns
     'is_homerun': ColumnSpec(

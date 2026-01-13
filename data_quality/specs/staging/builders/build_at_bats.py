@@ -33,8 +33,6 @@ def build_statcast_at_bats(df: pd.DataFrame) -> pd.DataFrame:
 
     df, _ = apply_table_spec(df, STATCAST_AT_BATS_INPUT_SPEC)
 
-    print(df.columns.to_list())
-
     required = {"game_pk", "game_counter", "pitch_number", "bat_score", "post_bat_score"}
     missing = required - set(df.columns)
     if missing:
@@ -56,18 +54,15 @@ def build_statcast_at_bats(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     end = df_sorted.groupby(by=['game_pk', 'game_counter'], sort=False).tail(1)
-    start = df_sorted.groupby(by=['game_pk', 'game_counter'], sort=False).head(1)
     
     ab_level = end.sort_values(by=['game_pk', 'game_counter']).copy()
-    next_ab = ab_level.groupby(by='game_pk', sort=False).shift(-1)
-
     ab_level = ab_level.sort_values(by=['game_pk', 'pitcher', 'game_counter'])
 
     ab_level['pitcher_pa_number'] = (
         ab_level.groupby(['game_pk', 'pitcher'], sort=False).cumcount() + 1
     ).astype("Int64")
 
-    ab_level['times_through_order'] = ((ab_level['pitcher_pa_number'] -1) // 9 + 1).astype('Int64')
+    ab_level['last_pitch_number'] = ab_level['pitch_number']
 
     ab_level = ab_level.merge(
         flag_sums,
