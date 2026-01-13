@@ -10,3 +10,7 @@ __pycache__/
 data/
 
 *.ipynb
+
+*.db
+*.log
+*.sqlite3
