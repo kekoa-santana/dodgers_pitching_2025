@@ -7,6 +7,9 @@ from sqlalchemy import pool
 
 from alembic import context
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -30,7 +33,7 @@ target_metadata = None
 def get_database_url():
     url = os.getenv("DATABASE_URL")
     if not url:
-        raise RunTimeError("DATABASE_URL environment variable not set")
+        raise RuntimeError("DATABASE_URL environment variable not set")
     return url
 
 

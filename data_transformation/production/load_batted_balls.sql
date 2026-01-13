@@ -93,4 +93,4 @@ SET bb_type = EXCLUDED.bb_type,
     la_band = EXCLUDED.la_band,
     ev_band = EXCLUDED.ev_band,
     hc_x_centered = EXCLUDED.hc_x_centered,
-    spray_bucket = EXCLUDED.spray_bucket
+    spray_bucket = EXCLUDED.spray_bucket;
