@@ -8,6 +8,7 @@ from data_transformation.staging.transform_load_table import transform_and_load
 from data_quality.specs.staging.statcast_pitches import STATCAST_PITCHES_SPEC
 from data_quality.specs.staging.statcast_batted_balls import STATCAST_BATTED_BALLS_SPEC
 from data_quality.specs.staging.statcast_at_bats import STATCAST_AT_BATS_SPEC
+from data_quality.specs.production.dim_player import DIM_PLAYER_SPEC
 from data_quality.specs.staging.builders.build_at_bats import build_statcast_at_bats
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -37,10 +38,18 @@ REGISTRY = {
         'constraint': 'statcast_at_bats_pkey',
         'source': 'parquet',
         'builder': build_statcast_at_bats
+    },
+    'dim_player': {
+        'spec': DIM_PLAYER_SPEC,
+        'schema': 'production',
+        'table': 'dim_player',
+        'constraint': 'dim_player_pkey1',
+        'source': 'parquet',
+        'builder': None
     }
 }
 
-def load_table(table_key: str, parquet_path: str = PARQUET_PATH):
+def load_table(table_key: str, parquet_path: str | str = PARQUET_PATH):
     if table_key not in REGISTRY:
         raise ValueError(f"Unknown table '{table_key}'. Options: {list(REGISTRY)}")
 
@@ -48,7 +57,7 @@ def load_table(table_key: str, parquet_path: str = PARQUET_PATH):
 
     engine = create_engine(build_db_url())
 
-    df_raw = pd.read_parquet(PARQUET_PATH)
+    df_raw = pd.read_parquet(parquet_path)
 
     builder = cfg.get("builder")
     if builder is not None:
