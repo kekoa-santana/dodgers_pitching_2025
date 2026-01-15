@@ -10,8 +10,8 @@ SELECT
     p.pitch_type,
     p.pitch_name,
     p.description,
-    pp.p_throws AS pitcher_throws,
-    bp.stand AS batter_stand,
+    CAST(pp.pitch_hand AS text) AS pitcher_throws,
+    CAST(bp.bat_side AS text) AS batter_stand,
     p.balls,
     p.strikes,
 
@@ -56,14 +56,14 @@ SELECT
     END AS movement_per_1000rpm,
 
     CASE
-        WHEN pp.p_throws = bp.stand THEN 'same'
-        WHEN pp.p_throws IS NULL OR bp.stand IS NULL THEN NULL
+        WHEN pp.pitch_hand = bp.bat_side THEN 'same'
+        WHEN pp.pitch_hand IS NULL OR bp.bat_side IS NULL THEN NULL
         ELSE 'opposite'
     END AS platoon,
 
     CASE
-        WHEN pp.p_throws = 'R' THEN 12.0*s.pfx_x
-        WHEN pp.p_throws = 'L' THEN -12.0*s.pfx_x
+        WHEN pp.pitch_hand = 'R' THEN 12.0*s.pfx_x
+        WHEN pp.pitch_hand = 'L' THEN -12.0*s.pfx_x
         ELSE 12.0*s.pfx_x
     END AS hb_in_arm_side_pos
 

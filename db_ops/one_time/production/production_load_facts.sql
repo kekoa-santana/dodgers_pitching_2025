@@ -24,14 +24,34 @@ SELECT
     ab.post_bat_score,
     ab.bat_score_diff
 FROM staging.statcast_at_bats ab
-ON CONFLICT (game_pk, game_counter) DO NOTHING;
+JOIN production.dim_game g
+    ON g.game_pk = ab.game_pk
+WHERE g.game_type NOT IN ('E', 'S')
+ON CONFLICT (game_pk, game_counter) DO UPDATE
+SET pitcher_id = EXCLUDED.pitcher_id,
+    batter_id = EXCLUDED.batter_id,
+    game_counter = EXCLUDED.game_counter,
+    last_pitch_number = EXCLUDED.last_pitch_number,
+    pitcher_pa_number = EXCLUDED.pitcher_pa_number,
+    times_through_order = EXCLUDED.times_through_order,
+    balls = EXCLUDED.balls,
+    strikes = EXCLUDED.strikes,
+    outs_when_up = EXCLUDED.outs_when_up,
+    inning = EXCLUDED.inning,
+    inning_topbot = EXCLUDED.inning_topbot,
+    events = EXCLUDED.events,
+    bat_score = EXCLUDED.bat_score,
+    fld_score = EXCLUDED.fld_score,
+    post_bat_score = EXCLUDED.fld_score,
+    bat_score_diff = EXCLUDED.bat_score_diff;
+
 
 INSERT INTO production.fact_pitch (
     pa_id, game_pk, pitcher_id, batter_id, game_counter, pitch_number,
     pitch_type, pitch_name, description, release_speed, effective_speed,
     release_spin_rate, release_extension, spin_axis, pfx_x, pfx_z,
     zone, plate_x, plate_z, balls, strikes, outs_when_up, bat_score_diff,
-    is_whiff, is_called_strike, is_bip, is_swing, is_foul
+    is_whiff, is_called_strike, is_bip, is_swing, is_foul, batter_stand
 )
 SELECT
     pa.pa_id,
@@ -61,9 +81,39 @@ SELECT
     p.is_called_strike,
     p.is_bip,
     p.is_swing,
-    p.is_foul
+    p.is_foul,
+    p.stand
 FROM staging.statcast_pitches p
 JOIN production.fact_pa pa
     ON pa.game_pk = p.game_pk
     AND pa.game_counter = p.game_counter
-ON CONFLICT (game_pk, game_counter, pitch_number) DO NOTHING;
+JOIN production.dim_game g
+    ON pa.game_pk = g.game_pk
+WHERE g.game_type NOT IN ('E', 'S')
+ON CONFLICT (game_pk, game_counter, pitch_number) DO UPDATE
+SET pa_id = EXCLUDED.pa_id,
+    pitcher_id = EXCLUDED.pitcher_id,
+    batter_id = EXCLUDED.batter_id,
+    pitch_type = EXCLUDED.pitch_type,
+    pitch_name = EXCLUDED.pitch_name,
+    description = EXCLUDED.description,
+    release_speed = EXCLUDED.release_speed,
+    effective_speed = EXCLUDED.effective_speed,
+    release_spin_rate = EXCLUDED.release_spin_rate,
+    release_extension = EXCLUDED.release_extension,
+    spin_axis = EXCLUDED.spin_axis,
+    pfx_x = EXCLUDED.pfx_x,
+    pfx_z = EXCLUDED.pfx_z,
+    zone = EXCLUDED.zone,
+    plate_x = EXCLUDED.plate_x,
+    plate_z = EXCLUDED.plate_z,
+    balls = EXCLUDED.balls,
+    strikes = EXCLUDED.strikes,
+    outs_when_up = EXCLUDED.outs_when_up,
+    bat_score_diff = EXCLUDED.bat_score_diff,
+    is_whiff = EXCLUDED.is_whiff,
+    is_called_strike = EXCLUDED.is_called_strike,
+    is_bip = EXCLUDED.is_bip,
+    is_swing = EXCLUDED.is_swing,
+    is_foul = EXCLUDED.is_foul,
+    batter_stand = EXCLUDED.batter_stand
