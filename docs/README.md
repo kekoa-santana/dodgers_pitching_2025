@@ -1,4 +1,7 @@
 # DODGERS PITCHING PIPELINE
+### Introduction
+This project aims to build a Postgresql database for advanced pitching statistics from the Dodgers' 2025 World Series winning season. Data is collected from MLB Stats API endpoints(players, teams, schedule, boxscore) and Statcast (statcast_pitcher). The data is used to build production tables that are analytics ready to answer questions. Our first question we are answering focuses on Yoshinobu Yamamoto, looking at his good games vs bad games (good = avg_xwoba < 0.3, bad = avg_xwoba > 0.35) and determining what may be contributing to bad performances. We will be looking at pitcher fatigue from previous games, change in pitch usage percentage on second and third time through the order by batter stance, and pitcher shape falloff over time leading to dangerous contact.
+
 ### DIRECTORY STRUCTURE
 - dodgers_pitching
     - data
